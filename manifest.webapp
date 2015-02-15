@@ -1,5 +1,5 @@
 {
-  "name": "Okan Server",
+  "name": "okan orchestra",
   "description": "A Hello World app",
   "launch_path": "/index.html",
   "icons": {
@@ -12,6 +12,11 @@
   "permissions": {
     "tcp-socket": {},
     "wifi-manage": {},
-    "systemXHR": {}
+    "geolocation": {
+      "description": "to acquire weather situation"
+    },
+    "systemXHR": {
+      "description": "to acquire weather situation"
+    }
   }
 }
