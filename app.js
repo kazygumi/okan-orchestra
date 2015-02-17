@@ -12,7 +12,7 @@
         RAIN_V = 100,
         RAIN_LENGTH = 80,
         RAIN_VOLUME = 2,
-        LUSTER_V = 100,
+        LUSTER_V = 20,
         LUSTER_VOLUME = 4,
         LUSTER_R_MAX = 400,
         LUSTER_R_MIN = 200,
@@ -36,261 +36,14 @@
         temperatureSensor = "1900",
         photodetector = "2000",
         server,
-        requestArea;
+        requestArea,
+        Weather,
+        Delay,
+        Noise,
+        SE,
+        BGM,
+        audio;
     
-    
-    
-      var Weather = function(){
-        this.initialize.apply(this, arguments);
-      };
-    
-      Weather.prototype = {
-        ENDPOINT: "http://api.openweathermap.org/data/2.5/weather?",
-        initialize: function (){
-        },
-        get destination(){
-          return this.ENDPOINT + "lat=" + this.latitude + "&lon=" + this.longitude;
-        },
-        getWeather: function(){
-          return new Promise((resolve, reject) =>{
-            this.currentPosition().then(position => {
-              this.latitude = position.coords.latitude;
-              this.longitude = position.coords.longitude;
-              console.log("send request to " + this.destination);
-              var req = new XMLHttpRequest({mozSystem: true});
-              req.open("GET", this.destination);
-              req.onload = () => {
-                resolve(JSON.parse(req.response));
-              };
-              req.onerror = (error) => {
-                console.log(error);
-                reject(error);
-              };
-              req.send();
-            });
-          });
-        },
-        currentPosition: function(){
-          return new Promise((resolve, reject) => {        
-            navigator.geolocation.getCurrentPosition(resolve);
-          });
-        }
-      };
-    
-  var Delay = function(){
-    this.initialize.apply(this, arguments);
-  };
-
-  Delay.prototype = {
-    MAX: 1,
-    MIN: 0,
-    initialize: function(audioContext){
-      this._source = audioContext.createGain();
-      this._delay = audioContext.createDelay();
-      this._delayVolume = audioContext.createGain();
-      this._destination = audioContext.createGain();
-
-      this._source.connect(this._delay);
-      this._delay.connect(this._delayVolume);
-      this._delayVolume.connect(this._destination);
-      this._source.connect(this._destination);
-      this._delayVolume.connect(this._destination);
-    },
-    connect: function(node){
-      this._destination.connect(node);
-    },
-    disconnect: function(){
-      this._destination.disconnect();
-    },
-    get destination(){
-      return this._source;
-    },
-    get ammount(){
-      return this._delayVolume.gain.value;
-    },
-    set ammount(value){
-      this._delayVolume.gain.value = Math.min(Math.max(value, this.MIN), this.MAX);
-    }
-  };
-    
-    
-  var Noise = function(){
-    this.initialize.apply(this, arguments);
-  };
-  Noise.prototype = {
-    MAX: 3,
-    MIN: 0,
-    initialize: function(audioContext){
-      this._ammount = 0.5;
-      this._processor = audioContext.createScriptProcessor(4096, 1, 1);
-      this._processor.onaudioprocess = (event) => {
-        var input = event.inputBuffer.getChannelData(0);
-        var output = event.outputBuffer.getChannelData(0);
-        for (var i = 0; i < input.length; i++) {
-          output[i] = input[i] * (1 + (Math.random() * this.ammount) - this.ammount * 0.5);
-        }
-      };
-    },
-    connect: function(node){
-      this._processor.connect(node);
-    },
-    disconnect: function(node){
-      this._processor.disconnect();
-    },
-    get destination(){
-      return this._processor;
-    },
-    get ammount(){
-      return this._ammount;
-    },
-    set ammount(value){
-      this._ammount = Math.min(Math.max(this.MIN, value), this.MAX);
-    }
-  };
-    
-  var SE = function(){
-    this.initialize.apply(this, arguments);
-  };
-
-  SE.prototype = {
-    initialize: function(audioContext){
-      this.audioContext = audioContext;
-    },
-    play: function(destination){
-      if(this.buffer){
-        var source = this.audioContext.createBufferSource();
-        source.connect(destination);
-        source.buffer = this.buffer;
-        source.onended = function(){
-          source.disconnect();
-          source = null;
-        };
-        source.start();
-      }
-    },
-    get buffer(){
-      return this._buffer;
-    },
-    set buffer(buf){
-      this._buffer = buf;
-    },
-    get destination(){
-      return this._destination;
-    },
-    get gain(){
-      return this._destinatin.gain.value;
-    },
-    set gain(value){
-      this._destination.gain.value = value;
-    }
-  };
-    
-
-  var BGM = function(){
-    this.initialize.apply(this, arguments);
-  };
-  BGM.prototype = {
-    initialize: function(parent, audioContext){
-      this._el = document.createElement("audio");
-      this._el.autoplay = true;
-      this._el.loop = true;
-      parent.appendChild(this._el);
-
-      this._source = audioContext.createMediaElementSource(this._el);
-      this._el.addEventListener("ended", (event) =>{
-        console.log("bgm leaches to its end");
-        this.play();
-      });
-    },
-    connect: function(node){
-      this._source.connect(node);
-    },
-    disconnect: function(){
-      this._source.disconnect();
-    },
-    play: function(){
-      this._el.play();
-    },
-    pause: function(){
-      this._el.pause();
-    },
-    set src(url){
-      this._el.src = url;
-    }
-  };
-    
-  var audio ={
-    _bgm: null,
-    _se: null,
-    context: new AudioContext(),
-    
-    init: function(conf){
-      this._bgm = new BGM(document.querySelector("body"), this.context);
-      this._bgm.src = conf.bgm;
-      this.se = conf.se;
-      this._seDestination = this.context.createGain();
-      this._seDestination.gain.value = 0.25;
-
-      this.filters = {
-        delay: new Delay(this.context),
-        noise: new Noise(this.context)
-      };
-      this.filters.delay.ammount = 0;
-      this.filters.noise.ammount = 0;
-      
-      this._bgm.connect(this.filters.noise.destination);
-      this.seDestination.connect(this.filters.noise.destination);
-      this.filters.noise.connect(this.filters.delay.destination);
-      this.filters.noise.connect(this.context.destination);
-    },
-    decode: function(file){
-      console.log("start decoding: " + file);
-      return new Promise((resolve, reject) =>{
-        var request = new XMLHttpRequest();
-        request.open("GET", file, true);
-        request.responseType = "arraybuffer";
-        request.onload = () =>{
-          console.log("loaded");
-          this.context.decodeAudioData(request.response, resolve);
-        };
-        request.send();
-      });
-    },
-    playBGM: function(){
-      console.log("playBGM");
-      this._bgm.play();
-    },
-    pauseBGM: function(){
-      this._bgm.pause();
-    },
-    playSE: function(index){
-      var se = this._se[index];
-      if(se){
-        se.play(this.seDestination);
-      }
-    },
-    get seDestination(){
-      return this._seDestination;
-    },
-    set bgm(url){
-      this._bgm.src = url;
-    },
-    set se(list){
-      list = list || [];
-      this._se = [];
-      for(var i = 0; i < list.length; i++){
-        var node = new SE(this.context);
-        this.decode(list[i]).then(buffer => {
-          node.buffer = buffer;
-          console.log("decoded");
-        });
-        this._se[i] = node;
-      }
-    }
-  };
-    
-    
-
     /**
      * サーバーオブジェクト作成
      */
@@ -328,10 +81,10 @@
     };
     
     /**
-     * デモ用
+     * ブラウザでのデモ用
+     * URLの後ろに #param&PIR=1&THERMO=1000&LIGHT=2000 とつけると擬似的にサーバーからの値をテストできる
      */
     function locationHashChanged() {
-        console.log("locationHashChanged");
         if (location.hash) {
             var parameters = location.hash.split('&'),
                 i,
@@ -344,7 +97,6 @@
                 paramName = decodeURIComponent(element[0]);
                 paramValue = decodeURIComponent(element[1]);
                 //センサー値に代入
-                console.log(paramName);
                 if (paramName === "PIR") {
                     motionSensor = paramValue;
                 } else if (paramName === "THERMO") {
@@ -357,6 +109,272 @@
     }
     window.onhashchange = locationHashChanged;
     
+    
+    
+    /**
+     * 天気の取得
+     */
+    Weather = function () {
+        this.initialize.apply(this, arguments);
+    };
+    Weather.prototype = {
+        ENDPOINT: "http://api.openweathermap.org/data/2.5/weather?",
+        initialize: function () {
+        },
+        get destination() {
+            return this.ENDPOINT + "lat=" + this.latitude + "&lon=" + this.longitude;
+        },
+        getWeather : function(){
+            return new Promise((resolve, reject) =>{
+                this.currentPosition().then(position => {
+                    this.latitude = position.coords.latitude;
+                    this.longitude = position.coords.longitude;
+                    console.log("send request to " + this.destination);
+                    var req = new XMLHttpRequest({mozSystem: true});
+                    req.open("GET", this.destination);
+                    req.onload = () => {
+                        resolve(JSON.parse(req.response));
+                    };
+                    req.onerror = (error) => {
+                        console.log(error);
+                        reject(error);
+                    };
+                    req.send();
+                });
+            });
+        },
+        currentPosition: function(){
+            return new Promise((resolve, reject) => {        
+                navigator.geolocation.getCurrentPosition(resolve);
+            });
+        }
+    };
+    
+    /**
+     * 音 Delay
+     */
+    Delay = function(){
+        this.initialize.apply(this, arguments);
+    };
+
+    Delay.prototype = {
+        MAX: 1,
+        MIN: 0,
+        initialize: function(audioContext){
+            this._source = audioContext.createGain();
+            this._delay = audioContext.createDelay();
+            this._delayVolume = audioContext.createGain();
+            this._destination = audioContext.createGain();
+
+            this._source.connect(this._delay);
+            this._delay.connect(this._delayVolume);
+            this._delayVolume.connect(this._destination);
+            this._source.connect(this._destination);
+            this._delayVolume.connect(this._destination);
+        },
+        connect: function(node){
+            this._destination.connect(node);
+        },
+        disconnect: function(){
+            this._destination.disconnect();
+        },
+        get destination(){
+            return this._source;
+        },
+        get ammount(){
+            return this._delayVolume.gain.value;
+        },
+        set ammount(value){
+            this._delayVolume.gain.value = Math.min(Math.max(value, this.MIN), this.MAX);
+        }
+    };
+    
+    /**
+     * 音 Noise
+     */
+    Noise = function(){
+        this.initialize.apply(this, arguments);
+    };
+    Noise.prototype = {
+        MAX: 3,
+        MIN: 0,
+        initialize: function(audioContext){
+            this._ammount = 0.5;
+            this._processor = audioContext.createScriptProcessor(4096, 1, 1);
+            this._processor.onaudioprocess = (event) => {
+                var input = event.inputBuffer.getChannelData(0);
+                var output = event.outputBuffer.getChannelData(0);
+                for (var i = 0; i < input.length; i++) {
+                    output[i] = input[i] * (1 + (Math.random() * this.ammount) - this.ammount * 0.5);
+                }
+            };
+        },
+        connect: function(node){
+            this._processor.connect(node);
+        },
+        disconnect: function(node){
+            this._processor.disconnect();
+        },
+        get destination(){
+            return this._processor;
+        },
+        get ammount(){
+            return this._ammount;
+        },
+        set ammount(value){
+            this._ammount = Math.min(Math.max(this.MIN, value), this.MAX);
+        }
+    };
+    
+    /**
+     * 音 SE
+     */
+    SE = function(){
+        this.initialize.apply(this, arguments);
+    };
+
+    SE.prototype = {
+        initialize: function(audioContext){
+            this.audioContext = audioContext;
+        },
+        play: function(destination){
+            if(this.buffer){
+                var source = this.audioContext.createBufferSource();
+                source.connect(destination);
+                source.buffer = this.buffer;
+                source.onended = function(){
+                    source.disconnect();
+                    source = null;
+                };
+                source.start();
+            }
+        },
+        get buffer(){
+            return this._buffer;
+        },
+        set buffer(buf){
+            this._buffer = buf;
+        },
+        get destination(){
+            return this._destination;
+        },
+        get gain(){
+            return this._destinatin.gain.value;
+        },
+        set gain(value){
+            this._destination.gain.value = value;
+        }
+    };
+    
+    /**
+     * 音 BGM
+     */
+    BGM = function(){
+        this.initialize.apply(this, arguments);
+    };
+    BGM.prototype = {
+        initialize: function(parent, audioContext){
+            this._el = document.createElement("audio");
+            this._el.autoplay = true;
+            this._el.loop = true;
+            parent.appendChild(this._el);
+
+            this._source = audioContext.createMediaElementSource(this._el);
+            this._el.addEventListener("ended", (event) =>{
+                console.log("bgm leaches to its end");
+                this.play();
+            });
+        },
+        connect: function(node){
+            this._source.connect(node);
+        },
+        disconnect: function(){
+            this._source.disconnect();
+        },
+        play: function(){
+            this._el.play();
+        },
+        pause: function(){
+            this._el.pause();
+        },
+        set src(url){
+            this._el.src = url;
+        }
+    };
+    
+    /**
+     * 音 audio
+     */
+    audio ={
+        _bgm: null,
+        _se: null,
+        context: new AudioContext(),
+
+        init: function(conf){
+            this._bgm = new BGM(document.querySelector("body"), this.context);
+            this._bgm.src = conf.bgm;
+            this.se = conf.se;
+            this._seDestination = this.context.createGain();
+            this._seDestination.gain.value = 0.25;
+
+            this.filters = {
+                delay: new Delay(this.context),
+                noise: new Noise(this.context)
+            };
+            this.filters.delay.ammount = 0;
+            this.filters.noise.ammount = 0;
+
+            this._bgm.connect(this.filters.noise.destination);
+            this.seDestination.connect(this.filters.noise.destination);
+            this.filters.noise.connect(this.filters.delay.destination);
+            this.filters.noise.connect(this.context.destination);
+        },
+        decode: function(file){
+            console.log("start decoding: " + file);
+            return new Promise((resolve, reject) =>{
+                var request = new XMLHttpRequest();
+                request.open("GET", file, true);
+                request.responseType = "arraybuffer";
+                request.onload = () =>{
+                    console.log("loaded");
+                    this.context.decodeAudioData(request.response, resolve);
+                };
+                request.send();
+            });
+        },
+        playBGM: function(){
+            console.log("playBGM");
+            this._bgm.play();
+        },
+        pauseBGM: function(){
+            this._bgm.pause();
+        },
+        playSE: function(index){
+            var se = this._se[index];
+            if(se){
+                se.play(this.seDestination);
+            }
+        },
+        get seDestination(){
+            return this._seDestination;
+        },
+        set bgm(url){
+            this._bgm.src = url;
+        },
+        set se(list){
+            list = list || [];
+            this._se = [];
+            for(var i = 0; i < list.length; i++){
+                var node = new SE(this.context);
+                this.decode(list[i]).then(buffer => {
+                    node.buffer = buffer;
+                    console.log("decoded");
+                });
+                this._se[i] = node;
+            }
+        }
+    };
+
     
     /**
      * ウィンドウリサイズ
@@ -609,11 +627,12 @@
             if (now - ballTime > (BALL_INTERVAL / (photodetector / 1000 + 1))) {
                 //初期位置
                 r0 = Math.random() * (BALL_R_MAX - BALL_R_MIN) + BALL_R_MIN;
-                x0 = Math.random() * (window.innerWidth - r0 * 2) + r0;
-                y0 = r0;
+                x0 = (window.innerWidth - r0) / 2;
+                y0 = -r0;
                 c0 = Math.floor(Math.random() * 60 + 300);
                 //ボール生成
                 ball = new Ball(x0, y0, r0, c0, 0, 0);
+                console.log("x:"+x0+" y:"+y0+" r:"+r0);
                 //配列追加
                 ballsArray.push(ball);
 
@@ -632,44 +651,45 @@
             ball = ballsArray[0];
             ball.isFnish = true;
         }
-        console.log("ballMaxNumber " + ballMaxNumber);
-        console.log("photodetector " + photodetector);
         
         //ボールの相互の影響を計算
-        for (i = 0; i < ballsArray.length - 1; i++) {
+        for (i = 0; i < ballsArray.length; i++) {
             //対象のボール
             ball0 = ballsArray[i];
             for (j = i + 1; j < ballsArray.length; j++) {
-                //被対象のボール
-                ball1 = ballsArray[j];
-                //両ボール座標の相対距離
-                dx = ball1.x - ball0.x;
-                dy = ball1.y - ball0.y;
-                //3平方の定理から直線距離を出す
-                dist = Math.sqrt(dx * dx + dy * dy);
-                //両ボールの半径の合計を最小距離に
-                minDist = ball0.r + ball1.r;
-                //最小距離より縮まった場合
-                if (dist < minDist) {
-                    //x座標系の最小距離
-                    tx = ball0.x + dx / dist * minDist;
-                    //y座標系の最小距離
-                    ty = ball0.y + dy / dist * minDist;
-                    //加速度
-                    ax = (tx - ball1.x) * SPRING_VALUE;
-                    ay = (ty - ball1.y) * SPRING_VALUE;
-                    //それぞれ反対側へ反発
-                    ball0.vx -= ax;
-                    ball0.vy -= ay;
-                    ball1.vx += ax;
-                    ball1.vy += ay;
-                    //彩度をMAXに
-                    ball0.cs = 100;
-                    ball1.cs = 100;
-                    //明度を50に
-                    ball0.cl = 50;
-                    ball1.cl = 50;
-                    audio.playSE(SE_CRASH);  
+                if(ballsArray[j]){
+                    //被対象のボール
+                    ball1 = ballsArray[j];
+                    //両ボール座標の相対距離
+                    dx = ball1.x - ball0.x;
+                    dy = ball1.y - ball0.y;
+                    //3平方の定理から直線距離を出す
+                    dist = Math.sqrt(dx * dx + dy * dy);
+                    //両ボールの半径の合計を最小距離に
+                    minDist = ball0.r + ball1.r;
+                    //最小距離より縮まった場合
+                    if (dist < minDist) {
+                        //x座標系の最小距離
+                        tx = ball0.x + dx / dist * minDist;
+                        //y座標系の最小距離
+                        ty = ball0.y + dy / dist * minDist;
+                        //加速度
+                        ax = (tx - ball1.x) * SPRING_VALUE;
+                        ay = (ty - ball1.y) * SPRING_VALUE;
+                        //それぞれ反対側へ反発
+                        ball0.vx -= ax;
+                        ball0.vy -= ay;
+                        ball1.vx += ax;
+                        ball1.vy += ay;
+                        //彩度をMAXに
+                        ball0.cs = 100;
+                        ball1.cs = 100;
+                        //明度を50に
+                        ball0.cl = 50;
+                        ball1.cl = 50;
+                        audio.playSE(SE_CRASH);
+                        console.log(ballsArray);
+                    }
                 }
             }
             //終了したボールなら縮小
@@ -688,7 +708,7 @@
             ctx.beginPath();
             ctx.moveTo(ball0.x, ball0.y);
             ctx.arc(ball0.x, ball0.y, ball0.r, 0, Math.PI * 2, false);
-            //音感センサーによって色を変化
+            //温感センサーによって色を変化
             ctx.fillStyle = "hsla(" + (ball0.ch - temperatureSensor / 100 * 3) + ", " + ball0.cs + "%, " + ball0.cl + "%,1)";
             ctx.fill();
             //ctx.strokeStyle = ball0.c;
@@ -699,8 +719,10 @@
         ctx.beginPath();
         ctx.font = "100pt Helvetica";
         if (motionSensor === "1") {
+            //人感センサーがONの時
             ctx.fillStyle = "rgba(255,255,255,1)";
         } else {
+            //人感センサーがOFFの時
             ctx.fillStyle = "rgba(255,255,255,0.2)";
         }
         ctx.fillText(clockText, window.innerWidth / 2 - 270, window.innerHeight / 2 - 100);
