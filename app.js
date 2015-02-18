@@ -2,10 +2,10 @@
     
     'use strict';
     
-    var BALL_NUMBER = 5,
+    var BALL_NUMBER = 10,
         BALL_R_MAX = 60,
         BALL_R_MIN = 15,
-        BALL_INTERVAL = 20000,
+        BALL_INTERVAL = 1000,
         BOUNCE_VALUE = -0.5,
         SPRING_VALUE = 1,
         RAIN_ANGLE = 10,
@@ -624,7 +624,7 @@
         // 人感がONの時に一定時間ごとにボールを生成
         if (motionSensor === "1") {
             //光センサーによってインターバールを調整
-            if (now - ballTime > (BALL_INTERVAL / (photodetector / 1000 + 1))) {
+            if (now - ballTime > (-9 * BALL_INTERVAL / 4096 * photodetector + 10 * BALL_INTERVAL)) {
                 //初期位置
                 r0 = Math.random() * (BALL_R_MAX - BALL_R_MIN) + BALL_R_MIN;
                 x0 = (window.innerWidth - r0) / 2;
@@ -632,7 +632,7 @@
                 c0 = Math.floor(Math.random() * 60 + 300);
                 //ボール生成
                 ball = new Ball(x0, y0, r0, c0, 0, 0);
-                console.log("x:"+x0+" y:"+y0+" r:"+r0);
+                //console.log("x:"+x0+" y:"+y0+" r:"+r0);
                 //配列追加
                 ballsArray.push(ball);
 
@@ -645,7 +645,7 @@
         if (motionSensor === "0") {
             ballMaxNumber = 0;
         } else {
-            ballMaxNumber = Math.floor(BALL_NUMBER * (photodetector / 1000));
+            ballMaxNumber = Math.floor(BALL_NUMBER / 4096 * photodetector);
         }
         if (ballsArray.length > ballMaxNumber) {
             ball = ballsArray[0];
@@ -688,7 +688,6 @@
                         ball0.cl = 50;
                         ball1.cl = 50;
                         audio.playSE(SE_CRASH);
-                        console.log(ballsArray);
                     }
                 }
             }
