@@ -82,7 +82,7 @@
     
     /**
      * ブラウザでのデモ用
-     * URLの後ろに #param&PIR=1&THERMO=1000&LIGHT=2000 とつけると擬似的にサーバーからの値をテストできる
+     * URLの後ろに #param&PIR=1&THERMO=1914&LIGHT=4096 とつけると擬似的にサーバーからの値をテストできる
      */
     function locationHashChanged() {
         if (location.hash) {
@@ -545,10 +545,6 @@
         ctx.fillRect(0, 0, w, h);
         ctx.restore();
         
-        if (motionSensor === "1") {
-            
-        }
-        
         if (BG_PATTRN === 0) {
              //人感がONの時に雨を生成
             if (motionSensor === "1") {
@@ -588,7 +584,6 @@
                     luster = new Luster(0, y0, z0, r0, c0);
                     //配列追加
                     lusterArray.push(luster);
-
                     lusterTime = now;
                 }
             }
@@ -628,14 +623,13 @@
                 //初期位置
                 r0 = Math.random() * (BALL_R_MAX - BALL_R_MIN) + BALL_R_MIN;
                 x0 = (window.innerWidth - r0) / 2;
-                y0 = -r0;
+                y0 = -2 * r0;
                 c0 = Math.floor(Math.random() * 60 + 300);
                 //ボール生成
                 ball = new Ball(x0, y0, r0, c0, 0, 0);
                 //console.log("x:"+x0+" y:"+y0+" r:"+r0);
                 //配列追加
                 ballsArray.push(ball);
-
                 ballTime = now;
             }
         }
@@ -709,9 +703,7 @@
             ctx.arc(ball0.x, ball0.y, ball0.r, 0, Math.PI * 2, false);
             //温感センサーによって色を変化
             ctx.fillStyle = "hsla(" + (ball0.ch - temperatureSensor / 100 * 3) + ", " + ball0.cs + "%, " + ball0.cl + "%,1)";
-            ctx.fill();
-            //ctx.strokeStyle = ball0.c;
-            //ctx.stroke();  
+            ctx.fill(); 
         }
         
         //時計を描く
@@ -733,19 +725,11 @@
     
     window.addEventListener('DOMContentLoaded', function () {
         
-        var i = 0,
-            ball,
-            x0 = 0,
-            y0 = 0,
-            r0 = 0,
-            c0 = "",
-            vx0 = 0,
-            vy0 = 0;
-        
+        var weather = new Weather();
+            
         canvas = document.getElementById('c');
         context = canvas.getContext('2d');
 
-        var weather = new Weather();
         weather.getWeather().then(result =>{
           console.log(result);
         });
